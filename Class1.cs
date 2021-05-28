@@ -21,11 +21,11 @@ namespace Simulator
                 t.Start();
             }
         }
-        static void Main(string[] args)
+       /* static void Main1(string[] args)
         {
             Class1 p = new Class1();
             p.Example();
-        }
+        }*/
         //Method to implement syncronization using Mutex  
         static void MutexDemo(Object s, Object s1)
         {

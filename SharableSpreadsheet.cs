@@ -7,7 +7,13 @@ namespace Simulator
     class SharableSpreadsheet
     {
         private string[,] a;
-        public SharableSpreadsheet1(int nRows, int nCols)
+
+        public string[,] getSheet()
+        {
+            return this.a;
+        }
+
+        public SharableSpreadsheet(int nRows, int nCols)
         {
             // construct a nRows*nCols spreadsheet
             this.a = new string[nRows, nCols];
