@@ -21,6 +21,8 @@ namespace Simulator
         private static Mutex addRowMutex = new Mutex();
         private static Mutex addColMutex = new Mutex();
 
+        List<Thread> userThreads = new List<Thread>();
+
         public Program(SharableSpreadsheet sheet)
         {
             this.sheet = sheet;
@@ -44,6 +46,11 @@ namespace Simulator
             Program program = new Program(sheet);
             program.WeaveThread(nThreads);
 
+            foreach (Thread userThread in program.userThreads)
+            {
+                userThread.Join();
+            }
+
             program.printSheet();
         }
 
@@ -66,15 +73,21 @@ namespace Simulator
         {
             for(int i = 0; i < nThreads; i++)
             {
-                dOperations(nOperations);
+                Thread t = new Thread(() => dOperations(nOperations));
+                t.Name = string.Format("User [{0}]:", i);
+                userThreads.Add(t);
+                t.Start();
             }
         }
 
-        private void dOperations(int nThreads)
+        private void dOperations(int nOperations)
         {
             Dictionary<string, Func<int>> writeFunctions = new Dictionary<string, Func<int>>();
             writeFunctions["setCell"] = this.setCell;
+            writeFunctions["exchangeRows"] = this.exchangeRows;
+            writeFunctions["exchangeCols"] = this.exchangeCols;
             writeFunctions["addRow"] = this.addRow;
+            writeFunctions["addCol"] = this.addCol;
 
             for (int i = 0; i < nThreads; i++)
             {
@@ -82,13 +95,15 @@ namespace Simulator
                 if(readOrWrite <= 5)
                 {
                     //Read Operations using Semaphores
-                    Console.WriteLine("Read Operations using Semaphores");
+                    //Console.WriteLine("Read Operations using Semaphores");
                 } else
                 {
                     //Write Operations using Mutex
-                    Console.WriteLine("Write Operations using Mutex");
                     Func<int> randomMethod = getRandomMethod(writeFunctions);
-                    randomMethod();
+                    if(randomMethod != null)
+                    {
+                        randomMethod();
+                    }
                 }
             }
         }
@@ -105,6 +120,7 @@ namespace Simulator
                 {
                     return ele.Value;
                 }
+                loopCount++;
             }
             return null;
         }
@@ -115,7 +131,12 @@ namespace Simulator
             int row = GetRandomNumberBetween(0, rows - 1);
             int col = GetRandomNumberBetween(0, cols - 1);
             String word = GenerateRandomWord(GetRandomNumberBetween(1, 10));
+            String threadName = Thread.CurrentThread.Name;
+
             this.sheet.setCell(row, col, word);
+            
+            Console.WriteLine(threadName + " String " + word + " set in cell " + row + " " + col);
+
             setCellMutex.ReleaseMutex();
             return 0;
         }
@@ -125,8 +146,58 @@ namespace Simulator
             addRowMutex.WaitOne();
             int row = GetRandomNumberBetween(0, rows - 1);
             rows += 1;
+            String threadName = Thread.CurrentThread.Name;
+
             this.sheet.addRow(row);
+
+            Console.WriteLine(threadName + " Added a new row after row " + row);
+
             addRowMutex.ReleaseMutex();
+            return 0;
+        }
+
+        private int addCol()
+        {
+            addColMutex.WaitOne();
+            int col = GetRandomNumberBetween(0, cols - 1);
+            rows += 1;
+            String threadName = Thread.CurrentThread.Name;
+
+            this.sheet.addCol(col);
+
+            Console.WriteLine(threadName + " Added a new column after column " + col);
+
+            addColMutex.ReleaseMutex();
+            return 0;
+        }
+
+        private int exchangeRows()
+        {
+            exchangeRowsMutex.WaitOne();
+            int row1 = GetRandomNumberBetween(0, rows - 1);
+            int row2 = GetRandomNumberBetween(0, rows - 1);
+            String threadName = Thread.CurrentThread.Name;
+
+            this.sheet.exchangeRows(row1, row2);
+
+            Console.WriteLine(threadName + " Exchanged the rows " + row1 + " and " + row2);
+
+            exchangeRowsMutex.ReleaseMutex();
+            return 0;
+        }
+
+        private int exchangeCols()
+        {
+            exchangeColsMutex.WaitOne();
+            int col1 = GetRandomNumberBetween(0, cols - 1);
+            int col2 = GetRandomNumberBetween(0, cols - 1);
+            String threadName = Thread.CurrentThread.Name;
+
+            this.sheet.exchangeCols(col1, col2);
+
+            Console.WriteLine(threadName + " Exchanged the rows " + col1 + " and " + col2);
+
+            exchangeColsMutex.ReleaseMutex();
             return 0;
         }
 
