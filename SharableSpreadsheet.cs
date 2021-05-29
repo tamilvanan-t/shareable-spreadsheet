@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Threading;
 
 //new inside simulator
@@ -189,41 +190,8 @@ namespace Simulator
             return true;
         }
 
-
-
         //*WRITE*
         public bool addCol(int col1)
-        {
-            if (col1 > this.a.GetLength(1))
-                return false;
-            int rows = this.a.GetLength(0);
-            int cols = this.a.GetLength(1) + 1;
-            string[,] arr = new string[rows, cols];
-            for (int j = 0; j < col1; j++)
-            {
-                for (int i = 0; i < this.a.GetLength(0); i++)
-                {
-                    arr[i, j] = this.a[i, j];
-                }
-            }
-            for (int j = 0; j < this.a.GetLength(0); j++)
-            {
-                arr[j, col1] = "AddedColum_" + j + "_" + col1;
-            }
-            for (int i = col1; i < this.a.GetLength(1) + 1; i++)
-            {
-                for (int j = 0; j < this.a.GetLength(0); j++)
-                {
-                    arr[i, j] = this.a[i, j-1];
-                }
-            }
-            this.a = arr;
-            //add a column after col1
-            return true;
-        }
-
-        //*WRITE*
-        public bool addCol1(int col1)
         {
             if (col1 > this.a.GetLength(1))
                 return false;
@@ -291,15 +259,30 @@ namespace Simulator
         }
         public bool setConcurrentSearchLimit(int nUsers)
         {
-            // this function aims to limit the number of users that can perform the search operations concurrently.
-            // The default is no limit. When the function is called, the max number of concurrent search operations is set to nUsers. 
-            // In this case additional search operations will wait for existing search to finish.
-            return true;
+            bool result = Program.UpdateConcurrentSearchThreadCount(nUsers);
+            return result;
         }
         public bool save(String fileName)
         {
-            // save the spreadsheet to a file fileName.
-            // you can decide the format you save the data. There are several options.
+            lock(this.a)
+            {
+                int colsCount = this.a.GetLength(0);
+                String[] s = new string[colsCount];
+
+                for(int i = 0; i < colsCount; i++)
+                {
+                    for (int j = 0; j < this.a.GetLength(1); j++)
+                    {
+                        if(j > 0)
+                        {
+                            s[i] += ",";
+                        }
+                        s[i] += this.a[i, j];
+                    }
+                }
+                
+                File.WriteAllLines(fileName, s);
+            }
             return true;
         }
         public bool load(String fileName)

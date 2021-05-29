@@ -20,14 +20,20 @@ namespace Simulator
         private static Mutex exchangeColsMutex = new Mutex();
         private static Mutex addRowMutex = new Mutex();
         private static Mutex addColMutex = new Mutex();
+        private static Mutex setConcurrentSearchLimitMutex = new Mutex();
 
         //Read Semaphores
-        private static Semaphore getCellSemaphore = new Semaphore(1, 1);
-        private static Semaphore searchStringSemaphore = new Semaphore(1, 1);
-        private static Semaphore searchInRowSemaphore = new Semaphore(1, 1);
-        private static Semaphore searchInColSemaphore = new Semaphore(1, 1);
-        private static Semaphore searchInRangeSemaphore = new Semaphore(1, 1);
-        private static Semaphore getSizeSemaphore = new Semaphore(1, 1);
+        private static Semaphore getCellSemaphore = new Semaphore(nThreads, nThreads);
+        private static Semaphore searchStringSemaphore = new Semaphore(nThreads, nThreads);
+        private static Semaphore searchInRowSemaphore = new Semaphore(nThreads, nThreads);
+        private static Semaphore searchInColSemaphore = new Semaphore(nThreads, nThreads);
+        private static Semaphore searchInRangeSemaphore = new Semaphore(nThreads, nThreads);
+        private static Semaphore getSizeSemaphore = new Semaphore(nThreads, nThreads);
+        private static Semaphore saveFileSemaphore = new Semaphore(nThreads, nThreads);
+
+        private static int semaphoreCount = nThreads;
+
+        private static String filePath = "D:\\TamilVanan\\Temp\\";
 
         List<Thread> userThreads = new List<Thread>();
         List<String> randomWords = new List<String>();
@@ -53,6 +59,7 @@ namespace Simulator
 
             //Weave Thread
             Program program = new Program(sheet);
+
             program.WeaveThread(nThreads);
 
             foreach (Thread userThread in program.userThreads)
@@ -60,6 +67,7 @@ namespace Simulator
                 userThread.Join();
             }
 
+            sheet.save(filePath + "Final_Excel.csv");
             program.printSheet();
         }
 
@@ -83,7 +91,7 @@ namespace Simulator
             for(int i = 0; i < nThreads; i++)
             {
                 Thread t = new Thread(() => dOperations(nOperations));
-                t.Name = string.Format("User [{0}]:", i);
+                t.Name = string.Format("User [{0}] ", t.ManagedThreadId);
                 userThreads.Add(t);
                 t.Start();
             }
@@ -105,6 +113,9 @@ namespace Simulator
             readFunctions["searchInRow"] = this.searchInRow;
             readFunctions["searchInCol"] = this.searchInCol;
             readFunctions["searchInRange"] = this.searchInRange;
+            readFunctions["setConcurrentSearchLimit"] = this.setConcurrentSearchLimit;
+            readFunctions["saveFile"] = this.saveFile;
+
 
             for (int i = 0; i < nOperations; i++)
             {
@@ -120,7 +131,35 @@ namespace Simulator
                     Func<int> randomMethod = getRandomMethod(writeFunctions);
                     randomMethod();
                 }
+                Thread.Sleep(100);
             }
+        }
+
+        private int saveFile()
+        {
+            saveFileSemaphore.WaitOne();
+
+            String threadName = Thread.CurrentThread.Name;
+            String fileName = threadName + ".csv";
+            this.sheet.save(filePath + fileName);
+
+            Console.WriteLine(threadName + " saved File " + fileName);
+
+            saveFileSemaphore.Release();
+            return 0;
+        }
+
+        private int setConcurrentSearchLimit()
+        {
+            setConcurrentSearchLimitMutex.WaitOne();
+            int count = GetRandomNumberBetween(1, nThreads);
+            String threadName = Thread.CurrentThread.Name;
+
+            this.sheet.setConcurrentSearchLimit(count);
+            
+            Console.WriteLine(threadName + " Search ConcurrentSearchLimit set to " + count);
+            setConcurrentSearchLimitMutex.ReleaseMutex();
+            return 0;
         }
 
         private Func<int> getRandomMethod(Dictionary<string, Func<int>> writeFunctions)
@@ -295,7 +334,7 @@ namespace Simulator
             cols += 1;
             String threadName = Thread.CurrentThread.Name;
 
-            this.sheet.addCol1(col);
+            this.sheet.addCol(col);
 
             Console.WriteLine(threadName + " Added a new column after column " + col);
 
@@ -386,6 +425,37 @@ namespace Simulator
             }
             
             return word;
+        }
+
+        public static bool UpdateConcurrentSearchThreadCount(int threadCount)
+        {
+            if (semaphoreCount > threadCount)
+            {
+                int waitCount = semaphoreCount - threadCount;
+                for (int i = 0; i < waitCount; i++)
+                {
+                    searchStringSemaphore.WaitOne();
+                    searchInRowSemaphore.WaitOne();
+                    searchInColSemaphore.WaitOne();
+                    searchInRangeSemaphore.WaitOne();
+                    saveFileSemaphore.WaitOne();
+                }
+                
+                semaphoreCount = threadCount;
+            } else
+            {
+                int releaseCount = threadCount - semaphoreCount;
+                if(releaseCount > 0)
+                {
+                    searchStringSemaphore.Release(releaseCount);
+                    searchInRowSemaphore.Release(releaseCount);
+                    searchInColSemaphore.Release(releaseCount);
+                    searchInRangeSemaphore.Release(releaseCount);
+                    saveFileSemaphore.Release(releaseCount);
+                    semaphoreCount = threadCount;
+                }
+            }
+            return true;
         }
     }
 }
