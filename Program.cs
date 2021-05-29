@@ -58,11 +58,11 @@ namespace Simulator
         {
             string[,] sheetData = this.sheet.getSheet();
 
-            for (int i = 1; i <= rows; i++)
+            for (int i = 0; i < sheetData.GetLength(0); i++)
             {
-                for (int j = 1; j <= cols; j++)
+                for (int j = 0; j < sheetData.GetLength(1); j++)
                 {
-                    String value = sheetData[i - 1, j - 1];
+                    String value = sheetData[i, j];
                     Console.Write(value + "\t");
                 }
                 Console.WriteLine("");
@@ -88,8 +88,8 @@ namespace Simulator
             writeFunctions["exchangeCols"] = this.exchangeCols;
             writeFunctions["addRow"] = this.addRow;
             writeFunctions["addCol"] = this.addCol;
-
-            for (int i = 0; i < nThreads; i++)
+            //addCol();
+            for (int i = 0; i < nOperations; i++)
             {
                 int readOrWrite = GetRandomNumberBetween(1, 10);
                 if(readOrWrite <= 5)
@@ -100,10 +100,7 @@ namespace Simulator
                 {
                     //Write Operations using Mutex
                     Func<int> randomMethod = getRandomMethod(writeFunctions);
-                    if(randomMethod != null)
-                    {
-                        randomMethod();
-                    }
+                    randomMethod();
                 }
             }
         }
@@ -111,7 +108,7 @@ namespace Simulator
         private Func<int> getRandomMethod(Dictionary<string, Func<int>> writeFunctions)
         {
             int count = writeFunctions.Count;
-            int randNum = GetRandomNumberBetween(0, count - 1);
+            int randNum = GetRandomNumberBetween(0, count);
 
             int loopCount = 0;
             foreach (KeyValuePair<string, Func<int>> ele in writeFunctions)
@@ -160,10 +157,10 @@ namespace Simulator
         {
             addColMutex.WaitOne();
             int col = GetRandomNumberBetween(0, cols - 1);
-            rows += 1;
+            cols += 1;
             String threadName = Thread.CurrentThread.Name;
 
-            this.sheet.addCol(col);
+            this.sheet.addCol1(col);
 
             Console.WriteLine(threadName + " Added a new column after column " + col);
 
