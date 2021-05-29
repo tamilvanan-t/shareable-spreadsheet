@@ -21,7 +21,16 @@ namespace Simulator
         private static Mutex addRowMutex = new Mutex();
         private static Mutex addColMutex = new Mutex();
 
+        //Read Semaphores
+        private static Semaphore getCellSemaphore = new Semaphore(1, 1);
+        private static Semaphore searchStringSemaphore = new Semaphore(1, 1);
+        private static Semaphore searchInRowSemaphore = new Semaphore(1, 1);
+        private static Semaphore searchInColSemaphore = new Semaphore(1, 1);
+        private static Semaphore searchInRangeSemaphore = new Semaphore(1, 1);
+        private static Semaphore getSizeSemaphore = new Semaphore(1, 1);
+
         List<Thread> userThreads = new List<Thread>();
+        List<String> randomWords = new List<String>();
 
         public Program(SharableSpreadsheet sheet)
         {
@@ -88,14 +97,21 @@ namespace Simulator
             writeFunctions["exchangeCols"] = this.exchangeCols;
             writeFunctions["addRow"] = this.addRow;
             writeFunctions["addCol"] = this.addCol;
-            //addCol();
+
+            Dictionary<string, Func<int>> readFunctions = new Dictionary<string, Func<int>>();
+            readFunctions["getCell"] = this.getCell;
+            readFunctions["searchString"] = this.searchString;
+            readFunctions["getSize"] = this.getSize;
+            
+
             for (int i = 0; i < nOperations; i++)
             {
                 int readOrWrite = GetRandomNumberBetween(1, 10);
                 if(readOrWrite <= 5)
                 {
                     //Read Operations using Semaphores
-                    //Console.WriteLine("Read Operations using Semaphores");
+                    Func<int> randomMethod = getRandomMethod(readFunctions);
+                    randomMethod();
                 } else
                 {
                     //Write Operations using Mutex
@@ -120,6 +136,48 @@ namespace Simulator
                 loopCount++;
             }
             return null;
+        }
+
+        private int getSize()
+        {
+            getSizeSemaphore.WaitOne();
+            int row = 0;
+            int col = 0;
+            String threadName = Thread.CurrentThread.Name;
+            this.sheet.getSize(ref row, ref col);
+
+            Console.WriteLine(threadName + " Size of Sheet is row: " + row + " col: " + col);
+            getSizeSemaphore.Release();
+            return 0;
+        }
+
+        private int searchString()
+        {
+            searchStringSemaphore.WaitOne();
+            int row = 0;
+            int col = 0;
+            String word = RetreiveARandomWords();
+            String threadName = Thread.CurrentThread.Name;
+            this.sheet.searchString(word, ref row, ref col);
+
+            Console.WriteLine(threadName + " Search String " + word + " is present in row: " + row + " col: " + col);
+            searchStringSemaphore.Release();
+            return 0;
+        }
+
+        private int getCell()
+        {
+            getCellSemaphore.WaitOne();
+
+            int row = GetRandomNumberBetween(0, rows - 1);
+            int col = GetRandomNumberBetween(0, cols - 1);
+            String value = this.sheet.getCell(row, col);
+            String threadName = Thread.CurrentThread.Name;
+
+            Console.WriteLine(threadName + " Value in cell " + row + " " + col + " is " + value);
+
+            getCellSemaphore.Release();
+            return 0;
         }
 
         private int setCell()
@@ -192,7 +250,7 @@ namespace Simulator
 
             this.sheet.exchangeCols(col1, col2);
 
-            Console.WriteLine(threadName + " Exchanged the rows " + col1 + " and " + col2);
+            Console.WriteLine(threadName + " Exchanged the cols " + col1 + " and " + col2);
 
             exchangeColsMutex.ReleaseMutex();
             return 0;
@@ -218,7 +276,7 @@ namespace Simulator
             }
         }
 
-        private static String GenerateRandomWord(int len)
+        private String GenerateRandomWord(int len)
         {
             char[] letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
             Random rand = new Random();
@@ -233,6 +291,23 @@ namespace Simulator
                 // Append the letter.
                 word += letters[letter_num];
             }
+            randomWords.Add(word);
+            return word;
+        }
+
+        private String RetreiveARandomWords()
+        {
+            int count = randomWords.Count;
+            String word = null;
+            if (count > 0)
+            {
+                int rand = GetRandomNumberBetween(0, count);
+                word = randomWords[rand];
+            } else
+            {
+                word = GenerateRandomWord(10);
+            }
+            
             return word;
         }
     }

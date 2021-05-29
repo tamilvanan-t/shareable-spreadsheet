@@ -31,10 +31,13 @@ namespace Simulator
         //*WRITE*
         public bool setCell(int row, int col, String str)
         {
-            if (row >= this.a.GetLength(0) || col >= this.a.GetLength(1))
-                return false;
-            // set the string at [row,col]
-            this.a[row, col] = str;
+            lock(this.a)
+            {
+                if (row >= this.a.GetLength(0) || col >= this.a.GetLength(1))
+                    return false;
+                // set the string at [row,col]
+                this.a[row, col] = str;
+            }
             return true;
         }
 
@@ -66,11 +69,14 @@ namespace Simulator
             if ((row1 > this.a.GetLength(0)) || (row2 > this.a.GetLength(0)))
                 return false;
             // exchange the content of row1 and row2
-            for (int i = 0; i < this.a.GetLength(1); i++)
+            lock(this.a)
             {
-                string s = this.a[row1, i];
-                this.a[row1, i] = this.a[row2, i];
-                this.a[row2, i] = s;
+                for (int i = 0; i < this.a.GetLength(1); i++)
+                {
+                    string s = this.a[row1, i];
+                    this.a[row1, i] = this.a[row2, i];
+                    this.a[row2, i] = s;
+                }
             }
             return true;
         }
@@ -81,11 +87,14 @@ namespace Simulator
             if ((col1 > this.a.GetLength(1)) || (col2 > this.a.GetLength(1)))
                 return false;
             // exchange the content of col1 and col2
-            for (int i = 0; i < this.a.GetLength(0); i++)
+            lock (this.a)
             {
-                string s = this.a[i, col1];
-                this.a[i, col1] = this.a[i, col2];
-                this.a[i, col2] = s;
+                for (int i = 0; i < this.a.GetLength(0); i++)
+                {
+                    string s = this.a[i, col1];
+                    this.a[i, col1] = this.a[i, col2];
+                    this.a[i, col2] = s;
+                }
             }
             return true;
         }
@@ -153,27 +162,30 @@ namespace Simulator
             if (row1 > this.a.GetLength(0))
                 return false;
             //add a row after row1
-            string[,] arr = new string[this.a.GetLength(0) + 1, this.a.GetLength(1)];
-            for (int i = 0; i < row1; i++)
+            lock (this.a)
             {
-                for (int j = 0; j < this.a.GetLength(1); j++)
+                string[,] arr = new string[this.a.GetLength(0) + 1, this.a.GetLength(1)];
+                for (int i = 0; i < row1; i++)
+                {
+                    for (int j = 0; j < this.a.GetLength(1); j++)
 
-                {
-                    arr[i, j] = this.a[i, j];
+                    {
+                        arr[i, j] = this.a[i, j];
+                    }
                 }
-            }
-            for (int j = 0; j < this.a.GetLength(1); j++)
-            {
-                arr[row1, j] = "AddedRow_" + row1 + "_" + j;
-            }
-            for (int i = row1 + 1; i < this.a.GetLength(0) + 1; i++)
-            {
                 for (int j = 0; j < this.a.GetLength(1); j++)
                 {
-                    arr[i, j] = this.a[i-1, j];
+                    arr[row1, j] = "AddedRow_" + row1 + "_" + j;
                 }
+                for (int i = row1 + 1; i < this.a.GetLength(0) + 1; i++)
+                {
+                    for (int j = 0; j < this.a.GetLength(1); j++)
+                    {
+                        arr[i, j] = this.a[i - 1, j];
+                    }
+                }
+                this.a = arr;
             }
-            this.a = arr;
             return true;
         }
 
@@ -216,50 +228,56 @@ namespace Simulator
             if (col1 > this.a.GetLength(1))
                 return false;
 
-            int rows = this.a.GetLength(0);
-            int cols = this.a.GetLength(1) + 1;
-
-            String[,] arr = new String[rows, cols];
-            String[,] arrSplit1 = new String[rows, col1];
-            String[,] arrSplit2 = new String[rows, this.a.GetLength(1) - col1];
-
-            for (int i = 0; i < rows; i++)
+            lock (this.a)
             {
-                int split2Index = 0;
-                for (int j = 0; j < this.a.GetLength(1); j++)
-                {
-                    if(j < col1)
-                    {
-                        arrSplit1[i, j] = this.a[i, j];
-                    } else
-                    {
-                        arrSplit2[i, split2Index] = this.a[i, j];
-                        split2Index++;
-                    }
-                    
-                }
-            }
+                int rows = this.a.GetLength(0);
+                int cols = this.a.GetLength(1) + 1;
 
-            for (int i = 0; i<rows; i++)
-            {
-                int split2Index = 0;
-                for(int j = 0; j < cols; j++)
+                String[,] arr = new String[rows, cols];
+                String[,] arrSplit1 = new String[rows, col1];
+                String[,] arrSplit2 = new String[rows, this.a.GetLength(1) - col1];
+
+                for (int i = 0; i < rows; i++)
                 {
-                    if (j < col1)
+                    int split2Index = 0;
+                    for (int j = 0; j < this.a.GetLength(1); j++)
                     {
-                        arr[i, j] = arrSplit1[i, j];
-                    } else if (j == col1)
-                    {
-                        arr[i, j] = "Added Column_" + i + "_" + j;
-                    } else
-                    {
-                        arr[i, j] = arrSplit2[i, split2Index];
-                        split2Index++;
+                        if (j < col1)
+                        {
+                            arrSplit1[i, j] = this.a[i, j];
+                        }
+                        else
+                        {
+                            arrSplit2[i, split2Index] = this.a[i, j];
+                            split2Index++;
+                        }
+
                     }
                 }
-            }
 
-            this.a = arr;
+                for (int i = 0; i < rows; i++)
+                {
+                    int split2Index = 0;
+                    for (int j = 0; j < cols; j++)
+                    {
+                        if (j < col1)
+                        {
+                            arr[i, j] = arrSplit1[i, j];
+                        }
+                        else if (j == col1)
+                        {
+                            arr[i, j] = "Added Column_" + i + "_" + j;
+                        }
+                        else
+                        {
+                            arr[i, j] = arrSplit2[i, split2Index];
+                            split2Index++;
+                        }
+                    }
+                }
+
+                this.a = arr;
+            }
             //add a column after col1
             return true;
         }
