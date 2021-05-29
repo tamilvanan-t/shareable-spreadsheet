@@ -29,7 +29,7 @@ namespace Simulator
         private static Semaphore searchInColSemaphore = new Semaphore(nThreads, nThreads);
         private static Semaphore searchInRangeSemaphore = new Semaphore(nThreads, nThreads);
         private static Semaphore getSizeSemaphore = new Semaphore(nThreads, nThreads);
-        private static Semaphore saveFileSemaphore = new Semaphore(nThreads, nThreads);
+        private static Semaphore saveFileSemaphore = new Semaphore(1, nThreads);
 
         private static int semaphoreCount = nThreads;
 
@@ -43,13 +43,14 @@ namespace Simulator
             this.sheet = sheet;
         }
 
-        static void Main()
+        public static void Main(String[] args)
         {
-           /* rows = args[0];
-            cols = args[1];
-            nThreads = args[2];
-            nOperations = args[3];*/
+            rows = Int16.Parse(args[0]);
+            cols = Int16.Parse(args[1]);
+            nThreads = Int16.Parse(args[2]);
+            nOperations = Int16.Parse(args[3]);
 
+            semaphoreCount = nThreads;
 
             //create a rows* cols spreadsheet
             SharableSpreadsheet sheet = new SharableSpreadsheet(rows, cols);
@@ -120,7 +121,8 @@ namespace Simulator
             for (int i = 0; i < nOperations; i++)
             {
                 int readOrWrite = GetRandomNumberBetween(1, 10);
-                if(readOrWrite <= 5)
+                //if(readOrWrite <= 5)
+                if (true)
                 {
                     //Read Operations using Semaphores
                     Func<int> randomMethod = getRandomMethod(readFunctions);
@@ -315,11 +317,11 @@ namespace Simulator
         private int addRow()
         {
             addRowMutex.WaitOne();
-            int row = GetRandomNumberBetween(0, rows - 1);
+            int row = GetRandomNumberBetween(1, rows);
             rows += 1;
             String threadName = Thread.CurrentThread.Name;
 
-            this.sheet.addRow(row);
+            this.sheet.addRow1(row);
 
             Console.WriteLine(threadName + " Added a new row after row " + row);
 
@@ -330,7 +332,7 @@ namespace Simulator
         private int addCol()
         {
             addColMutex.WaitOne();
-            int col = GetRandomNumberBetween(0, cols - 1);
+            int col = GetRandomNumberBetween(1, cols);
             cols += 1;
             String threadName = Thread.CurrentThread.Name;
 
@@ -345,8 +347,8 @@ namespace Simulator
         private int exchangeRows()
         {
             exchangeRowsMutex.WaitOne();
-            int row1 = GetRandomNumberBetween(0, rows - 1);
-            int row2 = GetRandomNumberBetween(0, rows - 1);
+            int row1 = GetRandomNumberBetween(1, rows);
+            int row2 = GetRandomNumberBetween(1, rows);
             String threadName = Thread.CurrentThread.Name;
 
             this.sheet.exchangeRows(row1, row2);
@@ -382,12 +384,12 @@ namespace Simulator
         private static void InitializeValuesInSheet(SharableSpreadsheet sheet)
         {
             String[,] sheetValues = sheet.getSheet();
-            for (int i = 1; i <= rows; i++)
+            for (int i = 0; i < rows; i++)
             {
-                for(int j = 1; j <= cols; j++)
+                for(int j = 0; j < cols; j++)
                 {
                     String value = "Cell_" + i + "_" + j;
-                    sheetValues[i - 1, j - 1] = value;
+                    sheetValues[i, j] = value;
                 }
             }
         }
