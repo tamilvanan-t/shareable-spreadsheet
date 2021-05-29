@@ -102,7 +102,9 @@ namespace Simulator
             readFunctions["getCell"] = this.getCell;
             readFunctions["searchString"] = this.searchString;
             readFunctions["getSize"] = this.getSize;
-            
+            readFunctions["searchInRow"] = this.searchInRow;
+            readFunctions["searchInCol"] = this.searchInCol;
+            readFunctions["searchInRange"] = this.searchInRange;
 
             for (int i = 0; i < nOperations; i++)
             {
@@ -136,6 +138,81 @@ namespace Simulator
                 loopCount++;
             }
             return null;
+        }
+
+        private int searchInRange()
+        {
+            searchInRangeSemaphore.WaitOne();
+            int row1 = GetRandomNumberBetween(0, this.sheet.getSheet().GetLength(0) - 1);
+            int col1 = GetRandomNumberBetween(0, this.sheet.getSheet().GetLength(1) - 1);
+
+            int row2 = GetRandomNumberBetween(row1, this.sheet.getSheet().GetLength(0) - 1);
+            int col2 = GetRandomNumberBetween(col1, this.sheet.getSheet().GetLength(1) - 1);
+
+            int searchRow = 0;
+            int searchCol = 0;
+
+            String word = RetreiveARandomWords();
+            String threadName = Thread.CurrentThread.Name;
+
+            bool result = this.sheet.searchInRange(col1, col2, row1, row2, word, ref searchRow, ref searchCol);
+
+            if(result)
+            {
+                Console.WriteLine(threadName + " Search String " + word + " in range: row1: " + row1 + " col1: " + col1 + " row2: " + row2 + " col2: " + col2  + ". Found in row: " + searchRow + "col: " + searchCol);
+            } else
+            {
+                Console.WriteLine(threadName + " Search String " + word + " in range: row1: " + row1 + " col1: " + col1 + " row2: " + row2 + " col2: " + col2 + ". String not found in Range");
+            }
+
+            searchInRangeSemaphore.Release();
+            return 0;
+        }
+
+        private int searchInCol()
+        {
+            searchInColSemaphore.WaitOne();
+            int col = GetRandomNumberBetween(0, this.sheet.getSheet().GetLength(1) - 1);
+            int searchRow = 0;
+
+            String word = RetreiveARandomWords();
+            String threadName = Thread.CurrentThread.Name;
+
+            bool result = this.sheet.searchInCol(col, word, ref searchRow);
+
+            if(result)
+            {
+                Console.WriteLine(threadName + " Search String " + word + " in col: " + col + ". Found in row: " + searchRow);
+            } else
+            {
+                Console.WriteLine(threadName + " Search String " + word + " in col: " + col + ". Not Found");
+            }
+            
+            searchInColSemaphore.Release();
+            return 0;
+        }
+
+        private int searchInRow()
+        {
+            searchInRowSemaphore.WaitOne();
+            int row = GetRandomNumberBetween(0, this.sheet.getSheet().GetLength(0) - 1);
+            int searchCol = 0;
+
+            String word = RetreiveARandomWords();
+            String threadName = Thread.CurrentThread.Name;
+
+            bool result = this.sheet.searchInRow(row, word, ref searchCol);
+
+            if(result)
+            {
+                Console.WriteLine(threadName + " Search String " + word + " in row: " + row + ". Found in col: " + searchCol);
+            } else
+            {
+                Console.WriteLine(threadName + " Search String " + word + " in row: " + row + ". Not Found");
+            }
+
+            searchInRowSemaphore.Release();
+            return 0;
         }
 
         private int getSize()
