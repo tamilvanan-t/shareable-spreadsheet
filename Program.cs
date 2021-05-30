@@ -16,10 +16,7 @@ namespace Simulator
 
         //Write Mutexes
         private static Mutex setCellMutex = new Mutex();
-        private static Mutex exchangeRowsMutex = new Mutex();
-        private static Mutex exchangeColsMutex = new Mutex();
-        private static Mutex addRowMutex = new Mutex();
-        private static Mutex addColMutex = new Mutex();
+        private static Mutex writeMutex = new Mutex();
         private static Mutex setConcurrentSearchLimitMutex = new Mutex();
 
         //Read Semaphores
@@ -102,10 +99,7 @@ namespace Simulator
         {
             Dictionary<string, Func<int>> writeFunctions = new Dictionary<string, Func<int>>();
             writeFunctions["setCell"] = this.setCell;
-            writeFunctions["exchangeRows"] = this.exchangeRows;
-            writeFunctions["exchangeCols"] = this.exchangeCols;
-            writeFunctions["addRow"] = this.addRow;
-            writeFunctions["addCol"] = this.addCol;
+            writeFunctions["write"] = this.write;
 
             Dictionary<string, Func<int>> readFunctions = new Dictionary<string, Func<int>>();
             readFunctions["getCell"] = this.getCell;
@@ -121,8 +115,7 @@ namespace Simulator
             for (int i = 0; i < nOperations; i++)
             {
                 int readOrWrite = GetRandomNumberBetween(1, 10);
-                //if(readOrWrite <= 5)
-                if (true)
+                if(readOrWrite <= 5)
                 {
                     //Read Operations using Semaphores
                     Func<int> randomMethod = getRandomMethod(readFunctions);
@@ -135,6 +128,21 @@ namespace Simulator
                 }
                 Thread.Sleep(100);
             }
+        }
+
+        private int write()
+        {
+            writeMutex.WaitOne();
+            Dictionary<string, Func<int>> writeFunctions = new Dictionary<string, Func<int>>();
+            writeFunctions["exchangeRows"] = this.exchangeRows;
+            writeFunctions["exchangeCols"] = this.exchangeCols;
+            writeFunctions["addRow"] = this.addRow;
+            writeFunctions["addCol"] = this.addCol;
+
+            Func<int> randomMethod = getRandomMethod(writeFunctions);
+            randomMethod();
+            writeMutex.ReleaseMutex();
+            return 0;
         }
 
         private int saveFile()
@@ -272,6 +280,7 @@ namespace Simulator
         private int searchString()
         {
             searchStringSemaphore.WaitOne();
+
             int row = 0;
             int col = 0;
             String word = RetreiveARandomWords();
@@ -280,6 +289,7 @@ namespace Simulator
 
             Console.WriteLine(threadName + " Search String " + word + " is present in row: " + row + " col: " + col);
             searchStringSemaphore.Release();
+            
             return 0;
         }
 
@@ -316,7 +326,6 @@ namespace Simulator
 
         private int addRow()
         {
-            addRowMutex.WaitOne();
             int row = GetRandomNumberBetween(1, rows);
             rows += 1;
             String threadName = Thread.CurrentThread.Name;
@@ -325,13 +334,11 @@ namespace Simulator
 
             Console.WriteLine(threadName + " Added a new row after row " + row);
 
-            addRowMutex.ReleaseMutex();
             return 0;
         }
 
         private int addCol()
         {
-            addColMutex.WaitOne();
             int col = GetRandomNumberBetween(1, cols);
             cols += 1;
             String threadName = Thread.CurrentThread.Name;
@@ -340,13 +347,11 @@ namespace Simulator
 
             Console.WriteLine(threadName + " Added a new column after column " + col);
 
-            addColMutex.ReleaseMutex();
             return 0;
         }
 
         private int exchangeRows()
         {
-            exchangeRowsMutex.WaitOne();
             int row1 = GetRandomNumberBetween(1, rows);
             int row2 = GetRandomNumberBetween(1, rows);
             String threadName = Thread.CurrentThread.Name;
@@ -355,13 +360,11 @@ namespace Simulator
 
             Console.WriteLine(threadName + " Exchanged the rows " + row1 + " and " + row2);
 
-            exchangeRowsMutex.ReleaseMutex();
             return 0;
         }
 
         private int exchangeCols()
         {
-            exchangeColsMutex.WaitOne();
             int col1 = GetRandomNumberBetween(0, cols - 1);
             int col2 = GetRandomNumberBetween(0, cols - 1);
             String threadName = Thread.CurrentThread.Name;
@@ -370,7 +373,6 @@ namespace Simulator
 
             Console.WriteLine(threadName + " Exchanged the cols " + col1 + " and " + col2);
 
-            exchangeColsMutex.ReleaseMutex();
             return 0;
         }
 
@@ -440,7 +442,6 @@ namespace Simulator
                     searchInRowSemaphore.WaitOne();
                     searchInColSemaphore.WaitOne();
                     searchInRangeSemaphore.WaitOne();
-                    saveFileSemaphore.WaitOne();
                 }
                 
                 semaphoreCount = threadCount;
@@ -453,7 +454,6 @@ namespace Simulator
                     searchInRowSemaphore.Release(releaseCount);
                     searchInColSemaphore.Release(releaseCount);
                     searchInRangeSemaphore.Release(releaseCount);
-                    saveFileSemaphore.Release(releaseCount);
                     semaphoreCount = threadCount;
                 }
             }
